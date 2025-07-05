@@ -6,6 +6,7 @@
 #include "appconfig.h"
 #include "databasemanager.h"
 #include "monitoringworker.h"
+#include "networkserver.h"
 
 int main(int argc, char *argv[])
 {
@@ -27,21 +28,27 @@ int main(int argc, char *argv[])
     qInfo() << "Успешная загрузка из файла конфигурации";
 
     if (!DatabaseManager::instance().openDatabase()) {
-        qCritical() << "FATAL: Could not connect to the database. Exiting.";
+        qCritical() << "Ошибка при подключении к базе данных.";
         return 1;
     }
 
     QThread* workerThread = new QThread(&a);
     MonitoringWorker* worker = new MonitoringWorker();
-
     worker->moveToThread(workerThread);
-
     QObject::connect(workerThread, &QThread::started, worker, &MonitoringWorker::startMonitoring);
     QObject::connect(&a, &QCoreApplication::aboutToQuit, workerThread, &QThread::quit);
     QObject::connect(workerThread, &QThread::finished, worker, &MonitoringWorker::deleteLater);
     QObject::connect(workerThread, &QThread::finished, workerThread, &QThread::deleteLater);
-
     workerThread->start();
+
+    QThread* networkThread = new QThread(&a);
+    NetworkServer* networkServer = new NetworkServer();
+    networkServer->moveToThread(networkThread);
+    QObject::connect(networkThread, &QThread::started, networkServer, &NetworkServer::startServer);
+    QObject::connect(&a, &QCoreApplication::aboutToQuit, networkThread, &QThread::quit);
+    QObject::connect(networkThread, &QThread::finished, networkServer, &NetworkServer::deleteLater);
+    QObject::connect(networkThread, &QThread::finished, networkThread, &QThread::deleteLater);
+    networkThread->start();
 
     return a.exec();
 }

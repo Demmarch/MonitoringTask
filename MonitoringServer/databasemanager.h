@@ -17,6 +17,7 @@ public:
     QList<Device> getAllDevices();
     bool updateDeviceStatus(const QString& devNum, int newStatus);
     bool addDevice(const Device& device);
+    bool deleteDevice(const QString& devNum);
 private:
     DatabaseManager();
     ~DatabaseManager();

@@ -13,7 +13,8 @@ SOURCES += \
         appconfig.cpp \
         databasemanager.cpp \
         main.cpp \
-        monitoringworker.cpp
+        monitoringworker.cpp \
+        networkserver.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -23,4 +24,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 HEADERS += \
     appconfig.h \
     databasemanager.h \
-    monitoringworker.h
+    monitoringworker.h \
+    networkserver.h

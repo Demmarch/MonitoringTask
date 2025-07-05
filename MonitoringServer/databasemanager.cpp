@@ -40,11 +40,11 @@ bool DatabaseManager::openDatabase()
     _db.setPassword(config.dbPassword());
 
     if (!_db.open()) {
-        qCritical() << "Failed to connect to database:" << _db.lastError().text();
+        qCritical() << "Ошибка соединения с базой данных:" << _db.lastError().text();
         return false;
     }
 
-    qInfo() << "Database connection established successfully.";
+    qInfo() << "Соединение успешно.";
     return true;
 }
 
@@ -57,7 +57,7 @@ QList<Device> DatabaseManager::getAllDevices()
     query.prepare("SELECT id, dev_num, dev_name, dev_description, dev_status FROM devices");
 
     if (!query.exec()) {
-        qWarning() << "Failed to execute getAllDevices query:" << query.lastError().text();
+        qWarning() << "Ошибка выполнения DatabaseManager::getAllDevices():" << query.lastError().text();
         return devices;
     }
 
@@ -84,7 +84,7 @@ bool DatabaseManager::updateDeviceStatus(const QString &devNum, int newStatus)
     query.bindValue(":dev_num", devNum);
 
     if (!query.exec()) {
-        qWarning() << "Failed to update device status:" << query.lastError().text();
+        qWarning() << "Ошибка обновления статусов:" << query.lastError().text();
         return false;
     }
 
@@ -93,19 +93,17 @@ bool DatabaseManager::updateDeviceStatus(const QString &devNum, int newStatus)
 
 bool DatabaseManager::addDevice(const Device &device)
 {
-    QMutexLocker locker(&m_mutex);
+    QMutexLocker locker(&_mutex);
 
-    // Проверяем, не существует ли уже устройство с таким серийным номером
-    QSqlQuery checkQuery(m_db);
+    QSqlQuery checkQuery(_db);
     checkQuery.prepare("SELECT COUNT(*) FROM devices WHERE dev_num = :dev_num");
     checkQuery.bindValue(":dev_num", device.dev_num);
     if (!checkQuery.exec() || !checkQuery.next() || checkQuery.value(0).toInt() > 0) {
-        qWarning() << "Failed to add device: device with number" << device.dev_num << "already exists or DB error.";
+        qWarning() << "Не удалось добавить новое устройство: устройство с номером" << device.dev_num << "уже существует, или другая ошибка в БД.";
         return false;
     }
 
-    QSqlQuery query(m_db);
-    // Статус по умолчанию при добавлении - 0 (offline)
+    QSqlQuery query(_db);
     query.prepare("INSERT INTO devices (dev_num, dev_name, dev_description, dev_status) "
                   "VALUES (:dev_num, :dev_name, :dev_description, 0)");
     query.bindValue(":dev_num", device.dev_num);
@@ -113,7 +111,7 @@ bool DatabaseManager::addDevice(const Device &device)
     query.bindValue(":dev_description", device.dev_description);
 
     if (!query.exec()) {
-        qWarning() << "Failed to add device:" << query.lastError().text();
+        qWarning() << "Не удалось добавить устройство:" << query.lastError().text();
         return false;
     }
 
@@ -122,24 +120,24 @@ bool DatabaseManager::addDevice(const Device &device)
 
 bool DatabaseManager::deleteDevice(const QString &devNum)
 {
-    QMutexLocker locker(&m_mutex);
+    QMutexLocker locker(&_mutex);
 
     if (devNum.isEmpty()) {
-        qWarning() << "Failed to delete device: device number is empty.";
+        qWarning() << "Не удалось удалить устройство: серийник пустой.";
         return false;
     }
 
-    QSqlQuery query(m_db);
+    QSqlQuery query(_db);
     query.prepare("DELETE FROM devices WHERE dev_num = :dev_num");
     query.bindValue(":dev_num", devNum);
 
     if (!query.exec()) {
-        qWarning() << "Failed to delete device:" << query.lastError().text();
+        qWarning() << "Не удалось удалить устройство:" << query.lastError().text();
         return false;
     }
 
     if (query.numRowsAffected() == 0) {
-        qWarning() << "Device with number" << devNum << "not found for deletion.";
+        qWarning() << "Устройство с серийником" << devNum << "не найден для удаления.";
     }
 
     return query.numRowsAffected() > 0;
