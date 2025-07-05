@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <server>
+        <port>Пример</port>
+    </server>
+    <database>
+        <host>Пример</host>
+        <port>Пример</port>
+        <dbname>Пример</dbname>
+        <user>Пример</user>
+        <password>Пример</password>
+    </database>
+    <monitoring>
+        <interval_ms>Пример</interval_ms>
+    </monitoring>
+</config>
