@@ -20,19 +20,17 @@ void NetworkServer::startServer()
 {
     const quint16 port = AppConfig::instance().serverPort();
     if (!_tcpServer->listen(QHostAddress::Any, port)) {
-        qCritical() << "Не удалось запустить сервер на порту" << port
-                    << ":" << _tcpServer->errorString();
+        qCritical() << "Не удалось запустить сервер на портe:" << port << ":" << _tcpServer->errorString();
         return;
     }
-    qInfo() << "Network server started on port" << port
-            << "in thread:" << QThread::currentThreadId();
+    qInfo() << "Сервер работает на порте:" << port << "в потоке:" << QThread::currentThreadId();
 }
 
 void NetworkServer::onNewConnection()
 {
     QTcpSocket *clientSocket = _tcpServer->nextPendingConnection();
     if (clientSocket) {
-        qInfo() << "New client connected:" << clientSocket->peerAddress().toString();
+        qInfo() << "Новое клиентское соединение:" << clientSocket->peerAddress().toString();
         connect(clientSocket, &QTcpSocket::readyRead, this, &NetworkServer::onReadyRead);
         connect(clientSocket, &QTcpSocket::disconnected, this, &NetworkServer::onDisconnected);
     }
@@ -47,7 +45,7 @@ void NetworkServer::onReadyRead()
     QJsonDocument doc = QJsonDocument::fromJson(data);
 
     if (doc.isNull() || !doc.isObject()) {
-        sendResponse(createErrorResponse("Invalid JSON format."), clientSocket);
+        sendResponse(createErrorResponse("Неверный JSON."), clientSocket);
         return;
     }
 
@@ -58,7 +56,7 @@ void NetworkServer::onDisconnected()
 {
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
     if (clientSocket) {
-        qInfo() << "Client disconnected:" << clientSocket->peerAddress().toString();
+        qInfo() << "Клиентское соединение разорвано:" << clientSocket->peerAddress().toString();
         clientSocket->deleteLater();
     }
 }
@@ -66,17 +64,17 @@ void NetworkServer::onDisconnected()
 void NetworkServer::handleRequest(const QJsonObject &request, QTcpSocket *clientSocket)
 {
     if (!request.contains("cmd") || !request["cmd"].isString()) {
-        sendResponse(createErrorResponse("Request missing 'cmd' field."), clientSocket);
+        sendResponse(createErrorResponse("В запросе нет 'cmd'."), clientSocket);
         return;
     }
 
-    const QString cmd = request["cmd"].toString();
+    QString cmd = request["cmd"].toString();
     QJsonObject response;
 
     if (cmd == "getEquipment") {
         QList<Device> devices = DatabaseManager::instance().getAllDevices();
         QJsonArray devicesArray;
-        for (const auto& device : devices) {
+        for (Device& device : devices) {
             QJsonObject deviceJson = device.toJson();
             deviceJson.remove("id");
             devicesArray.append(deviceJson);
@@ -85,30 +83,30 @@ void NetworkServer::handleRequest(const QJsonObject &request, QTcpSocket *client
     }
     else if (cmd == "deleteEquipment") {
         if (!request.contains("number") || !request["number"].isString()) {
-            response = createErrorResponse("Request missing 'number' field.");
+            response = createErrorResponse("Отсутствует серийник в запросе.");
         } else {
             QString devNum = request["number"].toString();
             if (DatabaseManager::instance().deleteDevice(devNum)) {
                 response = createSuccessResponse();
             } else {
-                response = createErrorResponse("Failed to delete device or device not found.");
+                response = createErrorResponse("Не удалось удалить устройство, либо его нет изначально.");
             }
         }
     }
     else if (cmd == "addEquipment") {
         Device newDevice = Device::fromJson(request);
         if (newDevice.dev_num.isEmpty() || newDevice.dev_name.isEmpty()) {
-            response = createErrorResponse("Request missing 'dev_num' or 'dev_name' fields.");
+            response = createErrorResponse("Имя устройства и его серийник отсутствуют в запросе.");
         } else {
             if (DatabaseManager::instance().addDevice(newDevice)) {
                 response = createSuccessResponse();
             } else {
-                response = createErrorResponse("Failed to add device. It may already exist.");
+                response = createErrorResponse("Не удалось добавить новое устройство. Возможно оно уже есть с таким серийником");
             }
         }
     }
     else {
-        response = createErrorResponse("Unknown command: " + cmd);
+        response = createErrorResponse("Неизвестная команда: " + cmd);
     }
 
     sendResponse(response, clientSocket);

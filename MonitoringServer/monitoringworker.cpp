@@ -15,7 +15,7 @@ MonitoringWorker::MonitoringWorker(QObject *parent)
 void MonitoringWorker::startMonitoring()
 {
     qInfo() << "Процесс мониторинга находиться на потоке:" << QThread::currentThreadId();
-    const int interval = AppConfig::instance().pollIntervalMs();
+    int interval = AppConfig::instance().pollIntervalMs();
     _pollTimer->start(interval);
 
     pollDevices();
@@ -32,7 +32,7 @@ void MonitoringWorker::pollDevices()
         return;
     }
 
-    for (const auto& device : devices)
+    for (Device& device : devices)
     {
         int newStatus = getDeviceStatus();
         if (device.dev_status != newStatus)
