@@ -39,6 +39,24 @@ void NetworkClient::requestDeleteDevice(const QString &devNum)
     sendRequest(request);
 }
 
+void NetworkClient::requestEditDevice(const Device &device)
+{
+    QJsonObject request = device.toJson();
+    request["cmd"] = "editEquipment";
+    request.remove("id");
+    request.remove("dev_status");
+    sendRequest(request);
+}
+
+void NetworkClient::requestStatusLog(const QDateTime &from, const QDateTime &to)
+{
+    QJsonObject request{
+        {"cmd", "getStatusLog"},
+        {"from", from.toUTC().toString(Qt::ISODate)},
+        {"to", to.toUTC().toString(Qt::ISODate)}
+    };
+    sendRequest(request);
+}
 
 void NetworkClient::sendRequest(const QJsonObject &request)
 {
@@ -47,14 +65,14 @@ void NetworkClient::sendRequest(const QJsonObject &request)
     const quint16 serverPort = config.serverPort();
 
     if (serverHost.isEmpty() || serverPort == 0) {
-        emit requestFailed("Server address or port not set in config file.");
+        emit requestFailed("Адрес сервера и порт не заданы в конфигурационном файле.");
         return;
     }
 
     if (_socket->state() != QAbstractSocket::ConnectedState) {
         _socket->connectToHost(serverHost, serverPort);
         if (!_socket->waitForConnected(3000)) {
-            emit requestFailed("Failed to connect to server: " + _socket->errorString());
+            emit requestFailed("Не удалось подключится к серверу:" + _socket->errorString());
             return;
         }
     }
@@ -67,7 +85,7 @@ void NetworkClient::onReadyRead()
     QJsonDocument doc = QJsonDocument::fromJson(data);
 
     if (doc.isNull() || !doc.isObject()) {
-        emit requestFailed("Received invalid data from server.");
+        emit requestFailed("Получена неправильная информация от сервера.");
         return;
     }
 
@@ -97,6 +115,14 @@ void NetworkClient::onReadyRead()
                 devices.append(Device::fromJson(val.toObject()));
             }
             emit devicesReceived(devices);
+        }
+        else if (dataObj.contains("logs")) {
+            QList<StatusLogEntry> logEntries;
+            QJsonArray logArray = dataObj["logs"].toArray();
+            for (const QJsonValue& val : logArray) {
+                logEntries.append(StatusLogEntry::fromJson(val.toObject()));
+            }
+            emit statusLogReceived(logEntries);
         }
     } else {
         emit requestSucceeded("Операция прошла успешно.");

@@ -7,6 +7,7 @@
 #include <QJsonObject>
 
 #include "../common/device.h"
+#include "../common/statuslogentry.h"
 
 class NetworkClient : public QObject
 {
@@ -18,11 +19,14 @@ public:
     void requestAllDevices();
     void requestAddDevice(const Device& device);
     void requestDeleteDevice(const QString& devNum);
+    void requestEditDevice(const Device& device);
+    void requestStatusLog(const QDateTime& from, const QDateTime& to);
 
 signals:
     void devicesReceived(const QList<Device>& devices);
     void requestSucceeded(const QString& message);
     void requestFailed(const QString& message);
+    void statusLogReceived(const QList<StatusLogEntry>& logEntries);
 
 private slots:
     void onReadyRead();

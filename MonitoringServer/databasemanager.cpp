@@ -4,7 +4,7 @@
 #include <QMutexLocker>
 
 #include "databasemanager.h"
-#include "appconfig.h"
+#include "../common/appconfig.h"
 
 DatabaseManager& DatabaseManager::instance()
 {
@@ -141,4 +141,72 @@ bool DatabaseManager::deleteDevice(const QString &devNum)
     }
 
     return query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::updateDevice(const Device &device)
+{
+    QMutexLocker locker(&_mutex);
+
+    QSqlQuery query(_db);
+    query.prepare("UPDATE devices SET dev_name = :dev_name, dev_description = :dev_description "
+                  "WHERE dev_num = :dev_num");
+    query.bindValue(":dev_name", device.dev_name);
+    query.bindValue(":dev_description", device.dev_description);
+    query.bindValue(":dev_num", device.dev_num);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to update device data:" << query.lastError().text();
+        return false;
+    }
+
+    return query.numRowsAffected() > 0;
+}
+
+void DatabaseManager::logStatusChange(int deviceId, const QString& devNum, int oldStatus, int newStatus)
+{
+    QMutexLocker locker(&_mutex);
+
+    QSqlQuery query(_db);
+    query.prepare("INSERT INTO status_log (device_id, dev_num, old_status, new_status) "
+                  "VALUES (:device_id, :dev_num, :old_status, :new_status)");
+    query.bindValue(":device_id", deviceId);
+    query.bindValue(":dev_num", devNum);
+    query.bindValue(":old_status", oldStatus);
+    query.bindValue(":new_status", newStatus);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to log status change:" << query.lastError().text();
+    }
+}
+
+QList<StatusLogEntry> DatabaseManager::getStatusLog(const QDateTime &from, const QDateTime &to)
+{
+    QMutexLocker locker(&_mutex);
+    QList<StatusLogEntry> logEntries;
+
+    QSqlQuery query(_db);
+    query.prepare("SELECT log_id, dev_num, TO_CHAR(change_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as change_time_iso, old_status, new_status "
+                  "FROM status_log WHERE change_time BETWEEN :from AND :to "
+                  "ORDER BY change_time DESC");
+
+    query.bindValue(":from", from);
+    query.bindValue(":to", to);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to get status log:" << query.lastError().text();
+        return logEntries;
+    }
+
+    while (query.next()) {
+        StatusLogEntry entry;
+        entry.log_id = query.value("log_id").toInt();
+        entry.dev_num = query.value("dev_num").toString();
+        // --- ИЗМЕНЕНИЕ: Читаем отформатированную строку и создаем QDateTime ---
+        entry.change_time = QDateTime::fromString(query.value("change_time_iso").toString(), Qt::ISODate);
+        entry.old_status = query.value("old_status").toInt();
+        entry.new_status = query.value("new_status").toInt();
+        logEntries.append(entry);
+    }
+
+    return logEntries;
 }

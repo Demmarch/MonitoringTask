@@ -4,7 +4,7 @@
 #include <QThread>
 
 #include "networkserver.h"
-#include "appconfig.h"
+#include "../common/appconfig.h"
 #include "databasemanager.h"
 #include "../common/device.h"
 
@@ -102,6 +102,43 @@ void NetworkServer::handleRequest(const QJsonObject &request, QTcpSocket *client
                 response = createSuccessResponse();
             } else {
                 response = createErrorResponse("Не удалось добавить новое устройство. Возможно оно уже есть с таким серийником");
+            }
+        }
+    }
+    else if (cmd == "editEquipment") {
+        Device deviceToUpdate = Device::fromJson(request);
+        if (deviceToUpdate.dev_num.isEmpty() || deviceToUpdate.dev_name.isEmpty()) {
+            response = createErrorResponse("Имя устройства и его серийник отсутствуют в запросе.");
+        } else {
+            if (DatabaseManager::instance().updateDevice(deviceToUpdate)) {
+                response = createSuccessResponse();
+            } else {
+                response = createErrorResponse("Не удалось изменить устройство.");
+            }
+        }
+    }
+    else if (cmd == "getStatusLog") {
+        if (!request.contains("from") || !request.contains("to")) {
+            response = createErrorResponse("Отсутствуют поля 'from' и 'to'.");
+        } else {
+            QDateTime from = QDateTime::fromString(request.value("from").toString(), Qt::ISODate);
+            QDateTime to = QDateTime::fromString(request.value("to").toString(), Qt::ISODate);
+
+            if (!from.isValid() || !to.isValid()) {
+                response = createErrorResponse("Неверный формат даты. Нужен формат ISO 8601 (YYYY-MM-DDTHH:MM:SS).");
+            } else {
+                QList<StatusLogEntry> logs = DatabaseManager::instance().getStatusLog(from, to);
+                QJsonArray logArray;
+                for (const StatusLogEntry& entry : logs) {
+                    logArray.append(QJsonObject{
+                        {"log_id", entry.log_id},
+                        {"dev_num", entry.dev_num},
+                        {"change_time", entry.change_time.toString(Qt::ISODate)},
+                        {"old_status", entry.old_status},
+                        {"new_status", entry.new_status}
+                    });
+                }
+                response = createSuccessResponse(QJsonObject{{"logs", logArray}});
             }
         }
     }

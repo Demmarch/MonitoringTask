@@ -10,17 +10,25 @@ CONFIG += c++17
 
 include(../common/device.pri)
 include(../common/appconfig.pri)
+include(../common/statuslogentry.pri)
 
 SOURCES += \
+    devicedialog.cpp \
+    devicetablemodel.cpp \
     main.cpp \
     mainwindow.cpp \
-    networkclient.cpp
+    networkclient.cpp \
+    statuslogmodel.cpp
 
 HEADERS += \
+    devicedialog.h \
+    devicetablemodel.h \
     mainwindow.h \
-    networkclient.h
+    networkclient.h \
+    statuslogmodel.h
 
 FORMS += \
+    devicedialog.ui \
     mainwindow.ui
 
 # Default rules for deployment.

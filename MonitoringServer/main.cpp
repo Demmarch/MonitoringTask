@@ -3,7 +3,7 @@
 #include <QDebug>
 #include <QThread>
 
-#include "appconfig.h"
+#include "../common/appconfig.h"
 #include "databasemanager.h"
 #include "monitoringworker.h"
 #include "networkserver.h"

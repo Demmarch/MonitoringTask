@@ -9,6 +9,7 @@ CONFIG += c++17 cmdline
 
 include(../common/device.pri)
 include(../common/appconfig.pri)
+include(../common/statuslogentry.pri)
 
 SOURCES += \
         databasemanager.cpp \
